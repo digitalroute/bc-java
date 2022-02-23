@@ -1,7 +1,7 @@
 package org.bouncycastle.crypto.digests;
 
 import org.bouncycastle.crypto.ExtendedDigest;
-import org.bouncycastle.crypto.engines.ThreefishEngine;
+//import org.bouncycastle.crypto.engines.ThreefishEngine;
 import org.bouncycastle.crypto.params.SkeinParameters;
 import org.bouncycastle.util.Memoable;
 

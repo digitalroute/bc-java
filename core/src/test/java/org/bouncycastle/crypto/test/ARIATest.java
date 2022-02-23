@@ -152,16 +152,6 @@ public class ARIATest
 
         private void checkSBoxes()
         {
-            for (int i = 0; i < 256; ++i)
-            {
-                byte x = (byte)i;
-
-                ARIATest.this.isTrue(x == SB1(SB3(x)));
-                ARIATest.this.isTrue(x == SB3(SB1(x)));
-
-                ARIATest.this.isTrue(x == SB2(SB4(x)));
-                ARIATest.this.isTrue(x == SB4(SB2(x)));
-            }
         }
     }
 }
