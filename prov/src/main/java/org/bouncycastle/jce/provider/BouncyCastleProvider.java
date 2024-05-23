@@ -96,20 +96,14 @@ public final class BouncyCastleProvider extends Provider
 
     private static final String[] SYMMETRIC_MACS =
     {
-        "SipHash", "SipHash128", "Poly1305"
     };
 
     private static final CryptoServiceProperties[] SYMMETRIC_CIPHERS =
     {
         // TODO: these numbers need a bit more work, we cap at 256 bits.
-        service("AES", 256), service("ARC4", 20), service("ARIA", 256), service("Blowfish", 128), service("Camellia", 256),
-        service("CAST5", 128), service("CAST6", 256), service("ChaCha", 128), service("DES", 56),  service("DESede", 112),
-        service("GOST28147", 128), service("Grainv1", 128), service("Grain128", 128), service("HC128", 128), service("HC256", 256),
-        service("IDEA", 128), service("Noekeon", 128), service("RC2", 128), service("RC5", 128), service("RC6", 256),
-        service("Rijndael", 256), service("Salsa20", 128), service("SEED", 128), service("Serpent", 256), service("Shacal2", 128),
-        service("Skipjack", 80), service("SM4", 128), service("TEA", 128), service("Twofish", 256), service("Threefish", 128),
-        service("VMPC", 128), service("VMPCKSA3", 128), service("XTEA", 128), service("XSalsa20", 128), service("OpenSSLPBKDF", 128),
-        service("DSTU7624", 256), service("GOST3412_2015", 256), service("Zuc", 128)
+        service("AES", 256), service("Blowfish", 128), service("CAST5", 128),
+        service("CAST6", 256), service("DES", 56), service("RC2", 128),
+        service("RC5", 128),  service("Twofish", 256)
     };
 
      /*
@@ -126,7 +120,7 @@ public final class BouncyCastleProvider extends Provider
 
     private static final String[] ASYMMETRIC_CIPHERS =
     {
-        "DSA", "DH", "EC", "RSA", "GOST", "ECGOST", "ElGamal", "DSTU4145", "GM", "EdEC", "LMS", "SPHINCSPlus", "Dilithium", "Falcon", "NTRU"
+        "DSA", "DH", "EC", "RSA"
     };
 
     /*

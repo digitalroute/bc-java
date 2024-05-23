@@ -70,17 +70,6 @@ public class RC6Engine
         boolean             forEncryption,
         CipherParameters    params)
     {
-        if (!(params instanceof KeyParameter))
-        {
-            throw new IllegalArgumentException("invalid parameter passed to RC6 init - " + params.getClass().getName());
-        }
-
-        KeyParameter       p = (KeyParameter)params;
-        this.forEncryption = forEncryption;
-        byte[] key = p.getKey();
-        setKey(key);
-
-        CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties(getAlgorithmName(), key.length * 8, params, Utils.getPurpose(forEncryption)));
     }
 
     public int processBlock(
@@ -89,23 +78,7 @@ public class RC6Engine
         byte[]  out,
         int     outOff)
     {
-        int blockSize = getBlockSize();
-        if (_S == null)
-        {
-            throw new IllegalStateException("RC6 engine not initialised");
-        }
-        if ((inOff + blockSize) > in.length)
-        {
-            throw new DataLengthException("input buffer too short");
-        }
-        if ((outOff + blockSize) > out.length)
-        {
-            throw new OutputLengthException("output buffer too short");
-        }
-
-        return (forEncryption)
-            ?   encryptBlock(in, inOff, out, outOff) 
-            :   decryptBlock(in, inOff, out, outOff);
+      return 0;
     }
 
     public void reset()
@@ -121,74 +94,7 @@ public class RC6Engine
         byte[]      key)
     {
 
-        //
-        // KEY EXPANSION:
-        //
-        // There are 3 phases to the key expansion.
-        //
-        // Phase 1:
-        //   Copy the secret key K[0...b-1] into an array L[0..c-1] of
-        //   c = ceil(b/u), where u = wordSize/8 in little-endian order.
-        //   In other words, we fill up L using u consecutive key bytes
-        //   of K. Any unfilled byte positions in L are zeroed. In the
-        //   case that b = c = 0, set c = 1 and L[0] = 0.
-        //
-        // compute number of dwords
-        int c = (key.length + (bytesPerWord - 1)) / bytesPerWord;
-        if (c == 0)
-        {
-            c = 1;
-        }
-        int[]   L = new int[(key.length + bytesPerWord - 1) / bytesPerWord];
 
-        // load all key bytes into array of key dwords
-        for (int i = key.length - 1; i >= 0; i--)
-        {
-            L[i / bytesPerWord] = (L[i / bytesPerWord] << 8) + (key[i] & 0xff);
-        }
-
-        //
-        // Phase 2:
-        //   Key schedule is placed in a array of 2+2*ROUNDS+2 = 44 dwords.
-        //   Initialize S to a particular fixed pseudo-random bit pattern
-        //   using an arithmetic progression modulo 2^wordsize determined
-        //   by the magic numbers, Pw & Qw.
-        //
-        _S            = new int[2+2*_noRounds+2];
-
-        _S[0] = P32;
-        for (int i=1; i < _S.length; i++)
-        {
-            _S[i] = (_S[i-1] + Q32);
-        }
-
-        //
-        // Phase 3:
-        //   Mix in the user's secret key in 3 passes over the arrays S & L.
-        //   The max of the arrays sizes is used as the loop control
-        //
-        int iter;
-
-        if (L.length > _S.length)
-        {
-            iter = 3 * L.length;
-        }
-        else
-        {
-            iter = 3 * _S.length;
-        }
-
-        int A = 0;
-        int B = 0;
-        int i = 0, j = 0;
-
-        for (int k = 0; k < iter; k++)
-        {
-            A = _S[i] = rotateLeft(_S[i] + A + B, 3);
-            B =  L[j] = rotateLeft(L[j] + A + B, A+B);
-            i = (i+1) % _S.length;
-            j = (j+1) %  L.length;
-        }
     }
 
     private int encryptBlock(
@@ -197,52 +103,7 @@ public class RC6Engine
         byte[]  out,
         int     outOff)
     {
-        // load A,B,C and D registers from in.
-        int A = bytesToWord(in, inOff);
-        int B = bytesToWord(in, inOff + bytesPerWord);
-        int C = bytesToWord(in, inOff + bytesPerWord*2);
-        int D = bytesToWord(in, inOff + bytesPerWord*3);
-        
-        // Do pseudo-round #0: pre-whitening of B and D
-        B += _S[0];
-        D += _S[1];
-
-        // perform round #1,#2 ... #ROUNDS of encryption 
-        for (int i = 1; i <= _noRounds; i++)
-        {
-            int t = 0,u = 0;
-            
-            t = B*(2*B+1);
-            t = rotateLeft(t,5);
-            
-            u = D*(2*D+1);
-            u = rotateLeft(u,5);
-            
-            A ^= t;
-            A = rotateLeft(A,u);
-            A += _S[2*i];
-            
-            C ^= u;
-            C = rotateLeft(C,t);
-            C += _S[2*i+1];
-            
-            int temp = A;
-            A = B;
-            B = C;
-            C = D;
-            D = temp;            
-        }
-        // do pseudo-round #(ROUNDS+1) : post-whitening of A and C
-        A += _S[2*_noRounds+2];
-        C += _S[2*_noRounds+3];
-            
-        // store A, B, C and D registers to out        
-        wordToBytes(A, out, outOff);
-        wordToBytes(B, out, outOff + bytesPerWord);
-        wordToBytes(C, out, outOff + bytesPerWord*2);
-        wordToBytes(D, out, outOff + bytesPerWord*3);
-        
-        return 4 * bytesPerWord;
+      return 0;
     }
 
     private int decryptBlock(
@@ -251,52 +112,7 @@ public class RC6Engine
         byte[]  out,
         int     outOff)
     {
-        // load A,B,C and D registers from out.
-        int A = bytesToWord(in, inOff);
-        int B = bytesToWord(in, inOff + bytesPerWord);
-        int C = bytesToWord(in, inOff + bytesPerWord*2);
-        int D = bytesToWord(in, inOff + bytesPerWord*3);
-
-        // Undo pseudo-round #(ROUNDS+1) : post whitening of A and C 
-        C -= _S[2*_noRounds+3];
-        A -= _S[2*_noRounds+2];
-        
-        // Undo round #ROUNDS, .., #2,#1 of encryption 
-        for (int i = _noRounds; i >= 1; i--)
-        {
-            int t=0,u = 0;
-            
-            int temp = D;
-            D = C;
-            C = B;
-            B = A;
-            A = temp;
-            
-            t = B*(2*B+1);
-            t = rotateLeft(t, LGW);
-            
-            u = D*(2*D+1);
-            u = rotateLeft(u, LGW);
-            
-            C -= _S[2*i+1];
-            C = rotateRight(C,t);
-            C ^= u;
-            
-            A -= _S[2*i];
-            A = rotateRight(A,u);
-            A ^= t;
-            
-        }
-        // Undo pseudo-round #0: pre-whitening of B and D
-        D -= _S[1];
-        B -= _S[0];
-        
-        wordToBytes(A, out, outOff);
-        wordToBytes(B, out, outOff + bytesPerWord);
-        wordToBytes(C, out, outOff + bytesPerWord*2);
-        wordToBytes(D, out, outOff + bytesPerWord*3);
-        
-        return 4 * bytesPerWord;
+       return 0;
     }
 
     
@@ -340,14 +156,7 @@ public class RC6Engine
         byte[]  src,
         int     srcOff)
     {
-        int    word = 0;
-
-        for (int i = bytesPerWord - 1; i >= 0; i--)
-        {
-            word = (word << 8) + (src[i + srcOff] & 0xff);
-        }
-
-        return word;
+        return 0;
     }
 
     private void wordToBytes(
@@ -355,10 +164,5 @@ public class RC6Engine
         byte[]  dst,
         int     dstOff)
     {
-        for (int i = 0; i < bytesPerWord; i++)
-        {
-            dst[i + dstOff] = (byte)word;
-            word >>>= 8;
-        }
     }
 }

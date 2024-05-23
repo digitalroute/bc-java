@@ -59,19 +59,6 @@ public class XTEAEngine
         boolean             forEncryption,
         CipherParameters    params)
     {
-        if (!(params instanceof KeyParameter))
-        {
-            throw new IllegalArgumentException("invalid parameter passed to TEA init - " + params.getClass().getName());
-        }
-
-        _forEncryption = forEncryption;
-        _initialised = true;
-
-        KeyParameter       p = (KeyParameter)params;
-
-        setKey(p.getKey());
-        CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties(
-                    this.getAlgorithmName(), 128, params, Utils.getPurpose(forEncryption)));
     }
 
     public int processBlock(
@@ -80,23 +67,7 @@ public class XTEAEngine
         byte[]  out,
         int     outOff)
     {
-        if (!_initialised)
-        {
-            throw new IllegalStateException(getAlgorithmName()+" not initialised");
-        }
-
-        if ((inOff + block_size) > in.length)
-        {
-            throw new DataLengthException("input buffer too short");
-        }
-
-        if ((outOff + block_size) > out.length)
-        {
-            throw new OutputLengthException("output buffer too short");
-        }
-
-        return (_forEncryption) ? encryptBlock(in, inOff, out, outOff)
-                                    : decryptBlock(in, inOff, out, outOff);
+       return 0;
     }
 
     public void reset()
@@ -111,23 +82,7 @@ public class XTEAEngine
     private void setKey(
         byte[]      key)
     {
-        if (key.length != 16) 
-        {
-            throw new IllegalArgumentException("Key size must be 128 bits.");
-        }
 
-        int i, j;
-        for (i = j = 0; i < 4; i++,j+=4)
-        {
-            _S[i] = bytesToInt(key, j);
-        }
-            
-        for (i = j = 0; i < rounds; i++)
-        {
-                _sum0[i] = (j + _S[j & 3]);
-                j += delta;
-                _sum1[i] = (j + _S[j >>> 11 & 3]);
-        }
     }
 
     private int encryptBlock(
@@ -136,20 +91,7 @@ public class XTEAEngine
         byte[]  out,
         int     outOff)
     {
-        // Pack bytes into integers
-        int v0 = bytesToInt(in, inOff);
-        int v1 = bytesToInt(in, inOff + 4);
-
-        for (int i = 0; i < rounds; i++)
-        {
-            v0    += ((v1 << 4 ^ v1 >>> 5) + v1) ^ _sum0[i];
-            v1    += ((v0 << 4 ^ v0 >>> 5) + v0) ^ _sum1[i];
-        }
-
-        unpackInt(v0, out, outOff);
-        unpackInt(v1, out, outOff + 4);
-
-        return block_size;
+       return 0;
     }
 
     private int decryptBlock(
@@ -158,35 +100,15 @@ public class XTEAEngine
         byte[]  out,
         int     outOff)
     {
-        // Pack bytes into integers
-        int v0 = bytesToInt(in, inOff);
-        int v1 = bytesToInt(in, inOff + 4);
-
-        for (int i = rounds-1; i >= 0; i--)
-        {
-            v1  -= ((v0 << 4 ^ v0 >>> 5) + v0) ^ _sum1[i];
-            v0  -= ((v1 << 4 ^ v1 >>> 5) + v1) ^ _sum0[i];
-        }
-
-        unpackInt(v0, out, outOff);
-        unpackInt(v1, out, outOff + 4);
-
-        return block_size;
+       return 0;
     }
 
     private int bytesToInt(byte[] in, int inOff)
     {
-        return ((in[inOff++]) << 24) |
-                 ((in[inOff++] & 255) << 16) |
-                 ((in[inOff++] & 255) <<  8) |
-                 ((in[inOff] & 255));
+        return 0;
     }
 
     private void unpackInt(int v, byte[] out, int outOff)
     {
-        out[outOff++] = (byte)(v >>> 24);
-        out[outOff++] = (byte)(v >>> 16);
-        out[outOff++] = (byte)(v >>>  8);
-        out[outOff  ] = (byte)v;
     }
 }

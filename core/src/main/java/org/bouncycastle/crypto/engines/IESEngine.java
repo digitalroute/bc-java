@@ -58,11 +58,7 @@ public class IESEngine
         DerivationFunction kdf,
         Mac mac)
     {
-        this.agree = agree;
-        this.kdf = kdf;
-        this.mac = mac;
-        this.macBuf = new byte[mac.getMacSize()];
-        this.cipher = null;
+
     }
 
 
@@ -81,11 +77,7 @@ public class IESEngine
         Mac mac,
         BufferedBlockCipher cipher)
     {
-        this.agree = agree;
-        this.kdf = kdf;
-        this.mac = mac;
-        this.macBuf = new byte[mac.getMacSize()];
-        this.cipher = cipher;
+
     }
 
     /**
@@ -102,12 +94,7 @@ public class IESEngine
         CipherParameters pubParam,
         CipherParameters params)
     {
-        this.forEncryption = forEncryption;
-        this.privParam = privParam;
-        this.pubParam = pubParam;
-        this.V = new byte[0];
 
-        extractParams(params);
     }
 
     /**
@@ -119,11 +106,7 @@ public class IESEngine
      */
     public void init(AsymmetricKeyParameter publicKey, CipherParameters params, EphemeralKeyPairGenerator ephemeralKeyPairGenerator)
     {
-        this.forEncryption = true;
-        this.pubParam = publicKey;
-        this.keyPairGenerator = ephemeralKeyPairGenerator;
 
-        extractParams(params);
     }
 
     /**
@@ -135,11 +118,7 @@ public class IESEngine
      */
     public void init(AsymmetricKeyParameter privateKey, CipherParameters params, KeyParser publicKeyParser)
     {
-        this.forEncryption = false;
-        this.privParam = privateKey;
-        this.keyParser = publicKeyParser;
 
-        extractParams(params);
     }
 
     private void extractParams(CipherParameters params)
@@ -166,216 +145,6 @@ public class IESEngine
         return mac;
     }
 
-    private byte[] encryptBlock(
-        byte[] in,
-        int inOff,
-        int inLen)
-        throws InvalidCipherTextException
-    {
-        byte[] C = null, K = null, K1 = null, K2 = null;
-        int len;
-
-        if (cipher == null)
-        {
-            // Streaming mode.
-            K1 = new byte[inLen];
-            K2 = new byte[param.getMacKeySize() / 8];
-            K = new byte[K1.length + K2.length];
-
-            kdf.generateBytes(K, 0, K.length);
-
-            if (V.length != 0)
-            {
-                System.arraycopy(K, 0, K2, 0, K2.length);
-                System.arraycopy(K, K2.length, K1, 0, K1.length);
-            }
-            else
-            {
-                System.arraycopy(K, 0, K1, 0, K1.length);
-                System.arraycopy(K, inLen, K2, 0, K2.length);
-            }
-
-            C = new byte[inLen];
-
-            for (int i = 0; i != inLen; i++)
-            {
-                C[i] = (byte)(in[inOff + i] ^ K1[i]);
-            }
-            len = inLen;
-        }
-        else
-        {
-            // Block cipher mode.
-            K1 = new byte[((IESWithCipherParameters)param).getCipherKeySize() / 8];
-            K2 = new byte[param.getMacKeySize() / 8];
-            K = new byte[K1.length + K2.length];
-
-            kdf.generateBytes(K, 0, K.length);
-            System.arraycopy(K, 0, K1, 0, K1.length);
-            System.arraycopy(K, K1.length, K2, 0, K2.length);
-
-            // If iv provided use it to initialise the cipher
-            if (IV != null)
-            {
-                cipher.init(true, new ParametersWithIV(new KeyParameter(K1), IV));
-            }
-            else
-            {
-                cipher.init(true, new KeyParameter(K1));    
-            }
-            
-            C = new byte[cipher.getOutputSize(inLen)];
-            len = cipher.processBytes(in, inOff, inLen, C, 0);
-            len += cipher.doFinal(C, len);
-        }
-
-
-        // Convert the length of the encoding vector into a byte array.
-        byte[] P2 = param.getEncodingV();
-        byte[] L2 = null;
-        if (V.length != 0)
-        {
-            L2 = getLengthTag(P2);
-        }
-
-
-        // Apply the MAC.
-        byte[] T = new byte[mac.getMacSize()];
-
-        mac.init(new KeyParameter(K2));
-        mac.update(C, 0, C.length);
-        if (P2 != null)
-        {
-            mac.update(P2, 0, P2.length);
-        }
-        if (V.length != 0)
-        {
-            mac.update(L2, 0, L2.length);
-        }
-        mac.doFinal(T, 0);
-
-
-        // Output the triple (V,C,T).
-        byte[] Output = new byte[V.length + len + T.length];
-        System.arraycopy(V, 0, Output, 0, V.length);
-        System.arraycopy(C, 0, Output, V.length, len);
-        System.arraycopy(T, 0, Output, V.length + len, T.length);
-        return Output;
-    }
-
-    private byte[] decryptBlock(
-        byte[] in_enc,
-        int inOff,
-        int inLen)
-        throws InvalidCipherTextException
-    {
-        byte[] M, K, K1, K2;
-        int len = 0;
-
-        // Ensure that the length of the input is greater than the MAC in bytes
-        if (inLen < V.length + mac.getMacSize())
-        {
-            throw new InvalidCipherTextException("Length of input must be greater than the MAC and V combined");
-        }
-
-        // note order is important: set up keys, do simple encryptions, check mac, do final encryption.
-        if (cipher == null)
-        {
-            // Streaming mode.
-            K1 = new byte[inLen - V.length - mac.getMacSize()];
-            K2 = new byte[param.getMacKeySize() / 8];
-            K = new byte[K1.length + K2.length];
-
-            kdf.generateBytes(K, 0, K.length);
-
-            if (V.length != 0)
-            {
-                System.arraycopy(K, 0, K2, 0, K2.length);
-                System.arraycopy(K, K2.length, K1, 0, K1.length);
-            }
-            else
-            {
-                System.arraycopy(K, 0, K1, 0, K1.length);
-                System.arraycopy(K, K1.length, K2, 0, K2.length);
-            }
-
-            // process the message
-            M = new byte[K1.length];
-
-            for (int i = 0; i != K1.length; i++)
-            {
-                M[i] = (byte)(in_enc[inOff + V.length + i] ^ K1[i]);
-            }
-        }
-        else
-        {
-            // Block cipher mode.        
-            K1 = new byte[((IESWithCipherParameters)param).getCipherKeySize() / 8];
-            K2 = new byte[param.getMacKeySize() / 8];
-            K = new byte[K1.length + K2.length];
-
-            kdf.generateBytes(K, 0, K.length);
-            System.arraycopy(K, 0, K1, 0, K1.length);
-            System.arraycopy(K, K1.length, K2, 0, K2.length);
-
-            CipherParameters cp = new KeyParameter(K1);
-
-            // If IV provide use it to initialize the cipher
-            if (IV != null)
-            {
-                cp = new ParametersWithIV(cp, IV);
-            }
-
-            cipher.init(false, cp);
-
-            M = new byte[cipher.getOutputSize(inLen - V.length - mac.getMacSize())];
-
-            // do initial processing
-            len = cipher.processBytes(in_enc, inOff + V.length, inLen - V.length - mac.getMacSize(), M, 0);
-        }
-
-        // Convert the length of the encoding vector into a byte array.
-        byte[] P2 = param.getEncodingV();
-        byte[] L2 = null;
-        if (V.length != 0)
-        {
-            L2 = getLengthTag(P2);
-        }
-
-        // Verify the MAC.
-        int end = inOff + inLen;
-        byte[] T1 = Arrays.copyOfRange(in_enc, end - mac.getMacSize(), end);
-
-        byte[] T2 = new byte[T1.length];
-        mac.init(new KeyParameter(K2));
-        mac.update(in_enc, inOff + V.length, inLen - V.length - T2.length);
-
-        if (P2 != null)
-        {
-            mac.update(P2, 0, P2.length);
-        }
-        if (V.length != 0)
-        {
-            mac.update(L2, 0, L2.length);
-        }
-        mac.doFinal(T2, 0);
-
-        if (!Arrays.constantTimeAreEqual(T1, T2))
-        {
-            throw new InvalidCipherTextException("invalid MAC");
-        }
-
-        if (cipher == null)
-        {
-            return M;
-        }
-        else
-        {
-            len += cipher.doFinal(M, len);
-
-            return Arrays.copyOfRange(M, 0, len);
-        }
-    }
 
 
     public byte[] processBlock(
@@ -384,67 +153,7 @@ public class IESEngine
         int inLen)
         throws InvalidCipherTextException
     {
-        if (forEncryption)
-        {
-            if (keyPairGenerator != null)
-            {
-                EphemeralKeyPair ephKeyPair = keyPairGenerator.generate();
-
-                this.privParam = ephKeyPair.getKeyPair().getPrivate();
-                this.V = ephKeyPair.getEncodedPublicKey();
-            }
-        }
-        else
-        {
-            if (keyParser != null)
-            {
-                ByteArrayInputStream bIn = new ByteArrayInputStream(in, inOff, inLen);
-
-                try
-                {
-                    this.pubParam = keyParser.readKey(bIn);
-                }
-                catch (IOException e)
-                {
-                    throw new InvalidCipherTextException("unable to recover ephemeral public key: " + e.getMessage(), e);
-                }
-                catch (IllegalArgumentException e)
-                {
-                    throw new InvalidCipherTextException("unable to recover ephemeral public key: " + e.getMessage(), e);
-                }
-
-                int encLength = (inLen - bIn.available());
-                this.V = Arrays.copyOfRange(in, inOff, inOff + encLength);
-            }
-        }
-
-        // Compute the common value and convert to byte array. 
-        agree.init(privParam);
-        BigInteger z = agree.calculateAgreement(pubParam);
-        byte[] Z = BigIntegers.asUnsignedByteArray(agree.getFieldSize(), z);
-
-        // Create input to KDF.  
-        if (V.length != 0)
-        {
-            byte[] VZ = Arrays.concatenate(V, Z);
-            Arrays.fill(Z, (byte)0);
-            Z = VZ;
-        }
-
-        try
-        {
-            // Initialise the KDF.
-            KDFParameters kdfParam = new KDFParameters(Z, param.getDerivationV());
-            kdf.init(kdfParam);
-
-            return forEncryption
-                ? encryptBlock(in, inOff, inLen)
-                : decryptBlock(in, inOff, inLen);
-        }
-        finally
-        {
-            Arrays.fill(Z, (byte)0);
-        }
+       return new byte[0];
     }
 
     // as described in Shroup's paper and P1363a

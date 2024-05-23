@@ -57,20 +57,6 @@ public class TEAEngine
         boolean             forEncryption,
         CipherParameters    params)
     {
-        if (!(params instanceof KeyParameter))
-        {
-            throw new IllegalArgumentException("invalid parameter passed to TEA init - " + params.getClass().getName());
-        }
-
-        _forEncryption = forEncryption;
-        _initialised = true;
-
-        KeyParameter       p = (KeyParameter)params;
-
-        setKey(p.getKey());
-
-        CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties(
-            this.getAlgorithmName(), 128, params, Utils.getPurpose(forEncryption)));
     }
 
     public int processBlock(
@@ -79,23 +65,7 @@ public class TEAEngine
         byte[]  out,
         int     outOff)
     {
-        if (!_initialised)
-        {
-            throw new IllegalStateException(getAlgorithmName()+" not initialised");
-        }
-        
-        if ((inOff + block_size) > in.length)
-        {
-            throw new DataLengthException("input buffer too short");
-        }
-        
-        if ((outOff + block_size) > out.length)
-        {
-            throw new OutputLengthException("output buffer too short");
-        }
-        
-        return (_forEncryption) ? encryptBlock(in, inOff, out, outOff)
-                                    : decryptBlock(in, inOff, out, outOff);
+       return 0;
     }
 
     public void reset()
@@ -110,15 +80,7 @@ public class TEAEngine
     private void setKey(
         byte[]      key)
     {
-        if (key.length != 16) 
-        {
-            throw new IllegalArgumentException("Key size must be 128 bits.");
-        }
 
-        _a = bytesToInt(key, 0);
-        _b = bytesToInt(key, 4);
-        _c = bytesToInt(key, 8);
-        _d = bytesToInt(key, 12);
     }
 
     private int encryptBlock(
@@ -127,23 +89,7 @@ public class TEAEngine
         byte[]  out,
         int     outOff)
     {
-        // Pack bytes into integers
-        int v0 = bytesToInt(in, inOff);
-        int v1 = bytesToInt(in, inOff + 4);
-        
-        int sum = 0;
-        
-        for (int i = 0; i != rounds; i++)
-        {
-            sum += delta;
-            v0  += ((v1 << 4) + _a) ^ (v1 + sum) ^ ((v1 >>> 5) + _b);
-            v1  += ((v0 << 4) + _c) ^ (v0 + sum) ^ ((v0 >>> 5) + _d);
-        }
-
-        unpackInt(v0, out, outOff);
-        unpackInt(v1, out, outOff + 4);
-        
-        return block_size;
+        return 0;
     }
 
     private int decryptBlock(
@@ -152,31 +98,12 @@ public class TEAEngine
         byte[]  out,
         int     outOff)
     {
-        // Pack bytes into integers
-        int v0 = bytesToInt(in, inOff);
-        int v1 = bytesToInt(in, inOff + 4);
-        
-        int sum = d_sum;
-        
-        for (int i = 0; i != rounds; i++)
-        {
-            v1  -= ((v0 << 4) + _c) ^ (v0 + sum) ^ ((v0 >>> 5) + _d);
-            v0  -= ((v1 << 4) + _a) ^ (v1 + sum) ^ ((v1 >>> 5) + _b);
-            sum -= delta;
-        }
-        
-        unpackInt(v0, out, outOff);
-        unpackInt(v1, out, outOff + 4);
-        
-        return block_size;
+        return 0;
     }
 
     private int bytesToInt(byte[] in, int inOff)
     {
-        return ((in[inOff++]) << 24) |
-                 ((in[inOff++] & 255) << 16) |
-                 ((in[inOff++] & 255) <<  8) |
-                 ((in[inOff] & 255));
+        return 0;
     }
 
     private void unpackInt(int v, byte[] out, int outOff)

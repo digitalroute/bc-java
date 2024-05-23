@@ -3,13 +3,12 @@ package org.bouncycastle.crypto.digests;
 import org.bouncycastle.crypto.CryptoServicePurpose;
 import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.ExtendedDigest;
-import org.bouncycastle.crypto.engines.ThreefishEngine;
+//import org.bouncycastle.crypto.engines.ThreefishEngine;
 import org.bouncycastle.crypto.params.SkeinParameters;
 import org.bouncycastle.util.Memoable;
 
 /**
  * Implementation of the Skein parameterised hash function in 256, 512 and 1024 bit block sizes,
- * based on the {@link ThreefishEngine Threefish} tweakable block cipher.
  * <p>
  * This is the 1.3 version of Skein defined in the Skein hash function submission to the NIST SHA-3
  * competition in October 2010.
